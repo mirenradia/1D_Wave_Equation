@@ -1,0 +1,37 @@
+# depslib dependency file v1.0
+1511273930 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/main.cpp
+	<iostream>
+	<ios>
+	<iomanip>
+	"constants.h"
+	"allFunctions.h"
+
+1511273983 /media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/constants.h
+
+1511273559 /media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/allFunctions.h
+	<vector>
+
+1509711227 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/otherFunctions.cpp
+	<cmath>
+
+1509714345 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/userOptions.cpp
+	<iostream>
+
+1511177922 /media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/classes.h
+	<vector>
+	"constants.h"
+	<cmath>
+
+1511265360 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/firstStep.cpp
+	"constants.h"
+	<vector>
+
+1511265908 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/init.cpp
+	"constants.h"
+	<vector>
+	<cmath>
+
+1511265361 source:/media/miren/Windows/Users/miren/Google Drive/University/PhD/Numerics/1D_Wave_Equation/oneStep.cpp
+	"constants.h"
+	<vector>
+
