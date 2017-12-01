@@ -206,5 +206,5 @@ void writeAnimationScript()
 	animf << "do for [i=0:" << ntSteps << "] {\n\ttime = " << dt << "*i\n";
 	animf << "\ttitlevar = sprintf(\"time = %f\", time)\n";
 	animf << "\tp 'data.dat' every :::i::i w l title titlevar\n";
-	animf << "\tpause 0.02\n}\n";    
+	animf << "\tpause " << pause << "\n}\n";    
 }
