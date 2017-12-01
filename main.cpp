@@ -9,15 +9,17 @@
 
 typedef std::vector<double> vd;
 
-double c, dx, dt, alpha, xMax, xMin, tMax, a, A, x_0;
+double c, dx, dt, alpha, xMax, xMin, tMax, a, A, x_0, pause;
 int nxSteps, ntSteps, tPrecision, xPrecision;
 
 void readPars(double&, double&, double&, double&, double&, double&, int&,
-              double&, int&, double&, double&, double&, int&, int&, char*);
+              double&, int&, double&, double&, double&, int&, int&, double&,
+               char*);
 void init(vd&, vd&, vd&, vd&);
 void firstStep(vd&, vd&, vd&, vd&, vd&, vd&);
 void oneStep(vd&, vd&, vd&, vd&, vd&, vd&);
 void writeData(vd&, vd&, double);
+void writeAnimationScript();
 
 /*==========================================================================*/
 
@@ -30,7 +32,7 @@ int main(int argc, char *argv[])
     }
 
     readPars(c, dt, dx, alpha, xMax, xMin, nxSteps, tMax, ntSteps, a, A, x_0,
-    		 tPrecision, xPrecision, argv[1]);
+    		 tPrecision, xPrecision, pause, argv[1]);
 
     vd x(nxSteps+1,0);
     vd u0(nxSteps+1,0);
@@ -51,15 +53,8 @@ int main(int argc, char *argv[])
         time += dt;
         writeData(x, u0, time);
     }
-
-/*    for(int i=0; i <= nxSteps; i++)
-    {
-        std::cout << std::setprecision(tPrecision) << std::fixed;
-        std::cout << x[i] << "\t";
-        std::cout << std::setprecision(16) << std::scientific;
-        std::cout << u0[i] << "\t" << s0[i] << "\t" <<r0[i] << "\n";
-    }
-*/	
+	
+	writeAnimationScript();
     return 0;
 }
 
@@ -68,11 +63,11 @@ int main(int argc, char *argv[])
 void readPars(double &c, double &dt, double &dx, double &alpha, double &xMax,
              double &xMin, int &nxSteps, double &tMax, int &ntSteps,
              double &a, double &A, double &x_0, int &tPrecision, 
-             int &xPrecision, char* parf)
+             int &xPrecision, double &pause, char* parf)
     {
         std::ifstream parstream(parf);
 
-        if (!parstream)
+        if(!parstream)
         {
             std::cerr << "Uh oh, could not open " << parf << " for reading." 
             << std::endl;
@@ -93,7 +88,9 @@ void readPars(double &c, double &dt, double &dx, double &alpha, double &xMax,
             if(line.substr(0,3) == "a =") {a = std::stod(line.substr(4));}
             if(line.substr(0,5) == "x_0 =") {x_0 = std::stod(line.substr(6));}
             if(line.substr(0,3) == "A =") {A = std::stod(line.substr(4));}
-
+            if(line.substr(0,7) == "pause =") {
+            	pause = std::stod(line.substr(8));
+            }
         }
 
         alpha = c*dt/dx;
@@ -179,9 +176,10 @@ void oneStep(vd &u0, vd &u1, vd &r0, vd &r1, vd &s0, vd &s1)
 
 void writeData(vd &x, vd &u0, double time)
 {
-	std::ofstream dataf("data.dat", std::ios::app);
+	std::ofstream dataf("data.dat", (time == 0) ? std::ios::out : 
+						std::ios::app);
 
-	if (!dataf)
+	if(!dataf)
 	{
 		std::cerr << "Uh oh, could not open data.dat for writing" << std::endl;
 		exit(1);
@@ -197,4 +195,27 @@ void writeData(vd &x, vd &u0, double time)
 	}
 
 	dataf << "\n";
+}
+
+/*==========================================================================*/
+
+void writeAnimationScript()
+{
+	std::ofstream animf("animation.gpi");
+
+	if(!animf)
+	{
+		std::cerr << "Uh oh, could not open animation.gpi for writing" 
+				<< std::endl;
+		return;
+	}
+
+	animf << "set xrange [" << static_cast<int>(std::floor(xMin)) << ":" 
+		<< static_cast<int>(std::ceil(xMax)) << "]\n";
+	animf << "set yrange[" << -0.5*A << ":" << A+0.1 << "]\n";
+	animf << "do for [i=0:" << ntSteps << "] {\n\ttime = "
+		<< std::fixed << std::setprecision(tPrecision) << dt << "*i\n";
+	animf << "\ttitlevar = sprintf(\"time = %f\", time)\n";
+	animf << "\tp 'data.dat' every :::i::i w l title titlevar\n";
+	animf << "\tpause 0.02\n}\n";    
 }
