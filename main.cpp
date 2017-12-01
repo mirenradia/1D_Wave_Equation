@@ -10,11 +10,9 @@
 typedef std::vector<double> vd;
 
 double c, dx, dt, alpha, xMax, xMin, tMax, a, A, x_0, pause;
-int nxSteps, ntSteps, tPrecision, xPrecision;
+int nxSteps, ntSteps;
 
-void readPars(double&, double&, double&, double&, double&, double&, int&,
-              double&, int&, double&, double&, double&, int&, int&, double&,
-               char*);
+void readPars(char*);
 void init(vd&, vd&, vd&, vd&);
 void firstStep(vd&, vd&, vd&, vd&, vd&, vd&);
 void oneStep(vd&, vd&, vd&, vd&, vd&, vd&);
@@ -31,8 +29,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    readPars(c, dt, dx, alpha, xMax, xMin, nxSteps, tMax, ntSteps, a, A, x_0,
-    		 tPrecision, xPrecision, pause, argv[1]);
+    readPars(argv[1]);
 
     vd x(nxSteps+1,0);
     vd u0(nxSteps+1,0);
@@ -60,10 +57,7 @@ int main(int argc, char *argv[])
 
 /*==========================================================================*/
 
-void readPars(double &c, double &dt, double &dx, double &alpha, double &xMax,
-             double &xMin, int &nxSteps, double &tMax, int &ntSteps,
-             double &a, double &A, double &x_0, int &tPrecision, 
-             int &xPrecision, double &pause, char* parf)
+void readPars(char* parf)
     {
         std::ifstream parstream(parf);
 
@@ -96,8 +90,6 @@ void readPars(double &c, double &dt, double &dx, double &alpha, double &xMax,
         alpha = c*dt/dx;
         nxSteps = static_cast<int>((xMax-xMin)/dx);
         ntSteps = static_cast<int>(tMax/dt);
-        tPrecision = static_cast<int>(std::ceil(-std::log10(dt)));
-        xPrecision = static_cast<int>(std::ceil(-std::log10(dx)));
     }
 
 /*==========================================================================*/
@@ -184,14 +176,12 @@ void writeData(vd &x, vd &u0, double time)
 		std::cerr << "Uh oh, could not open data.dat for writing" << std::endl;
 		exit(1);
 	}
-
-	dataf << "#time = " << std::fixed << std::setprecision(tPrecision) <<
-			time << "\n" << std::scientific;
+	dataf << std::scientific << std::setprecision(14);
+	dataf << "#time = " << time << "\n";
 
 	for(int i = 0; i <= nxSteps; i++)
 	{
-		dataf << std::setprecision(xPrecision) << x[i] << "\t" <<
-				std::setprecision(16) << u0[i] << "\n";
+		dataf << x[i] << "\t" << u0[i] << "\n";
 	}
 
 	dataf << "\n";
@@ -213,8 +203,7 @@ void writeAnimationScript()
 	animf << "set xrange [" << static_cast<int>(std::floor(xMin)) << ":" 
 		<< static_cast<int>(std::ceil(xMax)) << "]\n";
 	animf << "set yrange[" << -0.5*A << ":" << A+0.1 << "]\n";
-	animf << "do for [i=0:" << ntSteps << "] {\n\ttime = "
-		<< std::fixed << std::setprecision(tPrecision) << dt << "*i\n";
+	animf << "do for [i=0:" << ntSteps << "] {\n\ttime = " << dt << "*i\n";
 	animf << "\ttitlevar = sprintf(\"time = %f\", time)\n";
 	animf << "\tp 'data.dat' every :::i::i w l title titlevar\n";
 	animf << "\tpause 0.02\n}\n";    
