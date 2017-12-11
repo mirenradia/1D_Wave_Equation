@@ -44,11 +44,13 @@ void oneStep_leapfrog(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
 void oneIter_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
 void averageIter_icn(Pars&, vd&, vd&, vd&, vd&);
 void calc_u_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
+void oneStep_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&);
 void writeData(Pars&, vd&, vd&, double, std::string);
 void writeAnimationScript(GaussPars&, Pars&, std::string, std::string);
 void leapfrogMainLoop(GaussPars&, Pars&);
 void icnMainLoop(GaussPars&, Pars&);
 void leapfrogMainLoop_conv_test(GaussPars&, Pars&);
+void icnMainLoop_conv_test(GaussPars&, Pars&);
 
 
 /*==========================================================================*/
@@ -68,22 +70,27 @@ int main(int argc, char *argv[])
     
     if(p.alg == "leapfrog")
     { 
-        leapfrogMainLoop(gp,p);
+        leapfrogMainLoop(gp, p);
 	}
     else if(p.alg == "icn")
     {
-        icnMainLoop(gp,p);
+        icnMainLoop(gp, p);
     }
     else if(p.alg == "leapfrog conv test")
     {
-        leapfrogMainLoop_conv_test(gp,p);
+        leapfrogMainLoop_conv_test(gp, p);
+    }
+    else if(p.alg == "icn conv test")
+    {
+    	icnMainLoop_conv_test(gp, p);
     }
     else
     {
         std::cerr << "In " << argv[1] << " there must be a line with either:\n";
         std::cerr << "alg = icn\n";
         std::cerr << "alg = leapfrog\n";
-        std::cerr << "alg = leapfrog conv test" << std::endl;
+        std::cerr << "alg = leapfrog conv test\n";
+        std::cerr << "alg = icn conv test" << std::endl;
         return 1;
     }
     
@@ -93,42 +100,67 @@ int main(int argc, char *argv[])
 /*==========================================================================*/
 
 void readPars(GaussPars &gp, Pars &p, char* parf)
+{
+    std::ifstream parstream(parf);
+
+    if(!parstream)
     {
-        std::ifstream parstream(parf);
-
-        if(!parstream)
-        {
-            std::cerr << "Uh oh, could not open " << parf << " for reading." 
-            << std::endl;
-            exit(1);
-        }
-
-        std::string line;
-
-        while(parstream)
-        {
-            std::getline(parstream, line);
-            if(line.substr(0,3) == "c =") {p.c = std::stod(line.substr(4));}
-            if(line.substr(0,4) == "dt =") {p.dt = std::stod(line.substr(5));}
-            if(line.substr(0,4) == "dx =") {p.dx = std::stod(line.substr(5));}
-            if(line.substr(0,6) == "xMax =") {p.xMax = std::stod(line.substr(7));}
-            if(line.substr(0,6) == "xMin =") {p.xMin = std::stod(line.substr(7));}
-            if(line.substr(0,6) == "tMax =") {p.tMax = std::stod(line.substr(7));}
-            if(line.substr(0,3) == "a =") {gp.a = std::stod(line.substr(4));}
-            if(line.substr(0,5) == "x_0 =") {gp.x_0 = std::stod(line.substr(6));}
-            if(line.substr(0,3) == "A =") {gp.A = std::stod(line.substr(4));}
-            if(line.substr(0,5) == "alg =") {p.alg = line.substr(6);}
-            if(line.substr(0,7) == "n_icn =") {p.n_icn = std::stoi(line.substr(8));}
-            if(line.substr(0,7) == "pause =") {
-            	p.pause = std::stod(line.substr(8));
-            }
-
-        }
-
-        p.alpha = p.c*p.dt/p.dx;
-        p.nxSteps = static_cast<int>((p.xMax-p.xMin)/p.dx);
-        p.ntSteps = static_cast<int>(p.tMax/p.dt);
+        std::cerr << "Uh oh, could not open " << parf << " for reading." 
+        << std::endl;
+        exit(1);
     }
+
+    std::string line;
+
+    while(parstream)
+    {
+        std::getline(parstream, line);
+        if(line.substr(0,3) == "c =") {p.c = std::stod(line.substr(4));}
+        if(line.substr(0,4) == "dt =") {p.dt = std::stod(line.substr(5));}
+        if(line.substr(0,4) == "dx =") {p.dx = std::stod(line.substr(5));}
+        if(line.substr(0,6) == "xMax =") {p.xMax = std::stod(line.substr(7));}
+        if(line.substr(0,6) == "xMin =") {p.xMin = std::stod(line.substr(7));}
+        if(line.substr(0,6) == "tMax =") {p.tMax = std::stod(line.substr(7));}
+        if(line.substr(0,3) == "a =") {gp.a = std::stod(line.substr(4));}
+        if(line.substr(0,5) == "x_0 =") {gp.x_0 = std::stod(line.substr(6));}
+        if(line.substr(0,3) == "A =") {gp.A = std::stod(line.substr(4));}
+        if(line.substr(0,5) == "alg =") {p.alg = line.substr(6);}
+        if(line.substr(0,7) == "n_icn =") {p.n_icn = std::stoi(line.substr(8));}
+        if(line.substr(0,7) == "pause =") {
+        	p.pause = std::stod(line.substr(8));
+        }
+
+    }
+
+    p.alpha = p.c*p.dt/p.dx;
+    p.nxSteps = static_cast<int>((p.xMax-p.xMin)/p.dx);
+    p.ntSteps = static_cast<int>(p.tMax/p.dt);
+}
+/*==========================================================================*/
+
+void printPars(GaussPars &gp, Pars &p)
+{
+	std::cout << std::setprecision(15);
+
+	std::cout << "Algorithm Parameters:\n";
+	std::cout << "c       = " << p.c << "\n";
+	std::cout << "dt      = " << p.dt << "\n";
+	std::cout << "dx      = " << p.dx << "\n";
+	std::cout << "alpha   = " << p.alpha << "\n";
+	std::cout << "xMin    = " << p.xMin << "\n";
+	std::cout << "xMax    = " << p.xMax << "\n";
+	std::cout << "tMax    = " << p.tMax << "\n";
+	std::cout << "nxSteps = " << p.nxSteps << "\n";
+	std::cout << "ntSteps = " << p.ntSteps << "\n";
+	std::cout << "alg     = " << p.alg << "\n";
+	if(!(p.alg.find("icn") == std::string::npos))
+		std::cout << "n_icn   = " << p.n_icn << "\n";
+
+	std::cout << "\nInitial Gaussian Parameters:\n";
+	std::cout << "a       = " << gp.a << "\n";
+	std::cout << "x_0     = " << gp.x_0 << "\n";
+	std::cout << "A       = " << gp.A << "\n";
+}
 
 /*==========================================================================*/
 
@@ -284,6 +316,35 @@ void calc_u_icn(Pars &p, vd &u0, vd &u1, vd &s0, vd &s1, vd &r0, vd &r1)
 
 /*==========================================================================*/
 
+void oneStep_icn(Pars &p, vd &u0, vd &u1, vd &r0, vd &r01, vd &r1, vd &s0, 
+	 vd &s01, vd &s1)
+{
+    for(int i_icn=0; i_icn <= p.n_icn; i_icn++)
+    {
+        if(i_icn == 0)
+        {
+            oneIter_icn(p, r0, r0, r01, s0, s0, s01);
+        }
+        else if(i_icn != p.n_icn)
+        {
+            averageIter_icn(p, r0, r01, s0, s01);
+            oneIter_icn(p, r0, r01, r1, s0, s01, s1);
+            
+            //swap vectors as this is not the final iteration
+            r1.swap(r01);
+            s1.swap(s01);
+        }
+        else
+        {
+            averageIter_icn(p, r0, r01, s0, s01);
+            oneIter_icn(p, r0, r01, r1, s0, s01, s1);
+        }
+    }
+    calc_u_icn(p, u0, u1, s0, s1, r0, r1);
+}
+
+/*==========================================================================*/
+
 void writeData(Pars &p, vd &x, vd &u0, double time, std::string filename)
 {
 	std::ofstream dataf(filename, (time == 0) ? std::ios::out : std::ios::app);
@@ -372,6 +433,8 @@ void writeAnimationScript(GaussPars &gp, Pars &p, std::string datafname,
 
 void leapfrogMainLoop(GaussPars &gp, Pars &p)
 {
+    printPars(gp, p);
+
     //instantiate our vectors to hold solution and first derivatives
     //the 0 quantities are the values at the current time step
     //the 1 quantities are the values at the next time step
@@ -390,7 +453,7 @@ void leapfrogMainLoop(GaussPars &gp, Pars &p)
     time += p.dt;
     writeData(p, x, u0, time, "data.dat");
 
-    for(int t=1; t <= p.ntSteps; t++)
+    for(int t=2; t <= p.ntSteps; t++)
     {
         oneStep_leapfrog(p, u0, u1, r0, r1, s0, s1);
         time += p.dt;
@@ -404,6 +467,8 @@ void leapfrogMainLoop(GaussPars &gp, Pars &p)
 
 void icnMainLoop(GaussPars &gp, Pars &p)
 {
+    printPars(gp, p);
+
     //instantiate our vectors to hold solution and first derivatives
     //the 0 quantities are the values at the current time step
     //the 1 quantities are the values at the next time step
@@ -423,30 +488,9 @@ void icnMainLoop(GaussPars &gp, Pars &p)
     init_icn(gp, p, u0, r0, s0, x);
     writeData(p, x, u0, time, "data.dat");
 
-    for(int t=0; t <= p.ntSteps; t++)
+    for(int t=1; t <= p.ntSteps; t++)
     {
-        for(int i_icn=0; i_icn <= p.n_icn; i_icn++)
-        {
-            if(i_icn == 0)
-            {
-                oneIter_icn(p, r0, r0, r01, s0, s0, s01);
-            }
-            else if(i_icn != p.n_icn)
-            {
-                averageIter_icn(p, r0, r01, s0, s01);
-                oneIter_icn(p, r0, r01, r1, s0, s01, s1);
-                
-                //swap vectors as this is not the final iteration
-                r1.swap(r01);
-                s1.swap(s01);
-            }
-            else
-            {
-                averageIter_icn(p, r0, r01, s0, s01);
-                oneIter_icn(p, r0, r01, r1, s0, s01, s1);
-            }
-        }
-        calc_u_icn(p, u0, u1, s0, s1, r0, r1);
+    	oneStep_icn(p, u0, u1, r0, r01, r1, s0, s01, s1);
         time += p.dt;
         writeData(p, x, u0, time, "data.dat");
     }   
@@ -476,6 +520,13 @@ void leapfrogMainLoop_conv_test(GaussPars &gp, Pars &p_c)
     p_f.dx *= 0.25;
     p_f.ntSteps *= 4;
     p_f.nxSteps *= 4;
+
+    std::cout << "\nCoarse ";
+    printPars(gp, p_c);
+    std::cout << "\nMedium ";
+    printPars(gp, p_m);
+    std::cout << "\nFine ";
+    printPars(gp, p_f);
 
 
     //instantiate our vectors to hold solution and first derivatives
@@ -527,7 +578,7 @@ void leapfrogMainLoop_conv_test(GaussPars &gp, Pars &p_c)
     firstStep_leapfrog(p_m, u0_m, u1_m, r0_m, r1_m, s0_m, s1_m);
     firstStep_leapfrog(p_f, u0_f, u1_f, r0_f, r1_f, s0_f, s1_f);
 
-    for(int t=1; t <= p_f.ntSteps; t++)
+    for(int t=2; t <= p_f.ntSteps; t++)
     {
         time += p_f.dt;
         oneStep_leapfrog(p_f, u0_f, u1_f, r0_f, r1_f, s0_f, s1_f);
@@ -550,6 +601,116 @@ void leapfrogMainLoop_conv_test(GaussPars &gp, Pars &p_c)
             writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
         }
     }
+    writeAnimationScript(gp, p_c, "conv_test_data.dat", 
+        "conv_test_animation.gpi");
+}
+
+/*==========================================================================*/
+
+void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
+{
+    //the input parameters will be for the coarse grid
+    //create 2 new Parameter structs for the medium and fine grids
+    //In this function:
+    //_c denote coarse grid values
+    //_m denote medium grid values
+    //_f denote fine grid values
+    Pars p_m {p_c};
+    Pars p_f {p_c};
+
+    //refine grid size by 2 for medium and fine grids
+    p_m.dt *= 0.5;
+    p_m.dx *= 0.5;
+    p_m.ntSteps *= 2;
+    p_m.nxSteps *= 2;
+    p_f.dt *= 0.25;
+    p_f.dx *= 0.25;
+    p_f.ntSteps *= 4;
+    p_f.nxSteps *= 4;
+
+    std::cout << "\nCoarse ";
+    printPars(gp, p_c);
+    std::cout << "\nMedium ";
+    printPars(gp, p_m);
+    std::cout << "\nFine ";
+    printPars(gp, p_f);
+
+
+    //instantiate our vectors to hold solution and first derivatives
+    //the 0 quantities are the values at the current time step
+    //the 1 quantities are the values at the next time step
+    //the 01 quantities will hold the intermediate "1/2" values in the
+    //ICN algorithm
+    vd x_c(p_c.nxSteps+1,0);
+    vd u0_c(p_c.nxSteps+1,0);
+    vd u1_c(p_c.nxSteps+1,0);
+    vd r0_c(p_c.nxSteps+1,0);
+    vd r01_c(p_c.nxSteps+1,0);
+    vd r1_c(p_c.nxSteps+1,0);
+    vd s0_c(p_c.nxSteps+1,0);
+    vd s01_c(p_c.nxSteps+1,0);
+    vd s1_c(p_c.nxSteps+1,0);
+
+    vd x_m(p_m.nxSteps+1,0);
+    vd u0_m(p_m.nxSteps+1,0);
+    vd u1_m(p_m.nxSteps+1,0);
+    vd r0_m(p_m.nxSteps+1,0);
+    vd r01_m(p_m.nxSteps+1,0);
+    vd r1_m(p_m.nxSteps+1,0);
+    vd s0_m(p_m.nxSteps+1,0);
+    vd s01_m(p_m.nxSteps+1,0);
+    vd s1_m(p_m.nxSteps+1,0);
+
+    vd x_f(p_f.nxSteps+1,0);
+    vd u0_f(p_f.nxSteps+1,0);
+    vd u1_f(p_f.nxSteps+1,0);
+    vd r0_f(p_f.nxSteps+1,0);
+    vd r01_f(p_f.nxSteps+1,0);
+    vd r1_f(p_f.nxSteps+1,0);
+    vd s0_f(p_f.nxSteps+1,0);
+    vd s01_f(p_f.nxSteps+1,0);
+    vd s1_f(p_f.nxSteps+1,0);
+
+    double time {0.0};
+
+    //instantiate two vectors to hold the difference between solutions
+    vd diff_c_m(p_c.nxSteps+1,0);
+    vd diff_m_f(p_c.nxSteps+1,0);
+
+    init_icn(gp, p_c, u0_c, r0_c, s0_c, x_c);
+    init_icn(gp, p_m, u0_m, r0_m, s0_m, x_m);
+    init_icn(gp, p_f, u0_f, r0_f, s0_f, x_f);
+
+    for(int i=0; i <= p_c.nxSteps; i++)
+    {
+        diff_c_m[i] = std::abs(u0_c[i] - u0_m[2*i]);
+        diff_m_f[i] = std::abs(u0_m[2*i] - u0_f[4*i]);
+    }
+
+    for(int t=1; t<= p_f.ntSteps; t++)
+    {
+        oneStep_icn(p_f, u0_f, u1_f, r0_f, r01_f, r1_f, s0_f, s01_f, s1_f);
+        
+        if(t % 2 == 0)
+        {
+            oneStep_icn(p_m, u0_m, u1_m, r0_m, r01_m, r1_m, s0_m, s01_m, s1_m);
+        }    
+        
+        if(t % 4 == 0)
+        {
+            oneStep_icn(p_c, u0_c, u1_c, r0_c, r01_c, r1_c, s0_c, s01_c, s1_c);
+
+            for(int i=0; i <= p_c.nxSteps; i++)
+            {
+                diff_c_m[i] = std::abs(u0_c[i] - u0_m[2*i]);
+                diff_m_f[i] = std::abs(u0_m[2*i] - u0_f[4*i]);
+            }
+
+            writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
+        }
+        time += p_f.dt;
+    }
+
     writeAnimationScript(gp, p_c, "conv_test_data.dat", 
         "conv_test_animation.gpi");
 }

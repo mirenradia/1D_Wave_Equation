@@ -1,16 +1,16 @@
 //c is the wavespeed (default = 1.0)
-c = 1.0
+c = 1
 
 //dt is the temporal stepsize 
-dt = 0.05
+dt = 0.0625
 
 //dx is the spatial stepsize
 //Choose such that the Courant factor c*dt/dx <= 1
-dx = 0.05
+dx = 0.0625
 
 //the domain is x in [xMin,xMax]
-xMax = 5.0
-xMin = -5.0
+xMax = 10.0
+xMin = -10.0
 
 //tMax is the value of time to solve up to
 tMax = 200
@@ -23,12 +23,13 @@ A = 1.0
 
 //alg is the choice of algorithm. Choose either
 //alg = icn (Iterated Crank-Nicholson) or 
-//alg = leapfrog (staggered leapfrog)
+//alg = icn conv test (convergence test for above) or
+//alg = leapfrog (staggered leapfrog) or
 //alg = leapfrog conv test (convergence test for above)
-alg = leapfrog conv test
+alg = icn
 
 //n_icn is the number of ICN iterations to do (default = 2)
 n_icn = 2
 
 //pause is the time between successive plots in the gnuplot animation
-pause = 0.02
+pause = 0
