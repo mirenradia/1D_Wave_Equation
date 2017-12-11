@@ -193,14 +193,15 @@ void init_icn(GaussPars &gp, Pars &p, vd &u0, vd &r0, vd &s0, vd &x)
         u0[i] = gp.A*std::exp(-(x[i] - gp.x_0)*(x[i] - gp.x_0)/(2*gp.a*gp.a));
     }
 
-    for(int i=1; i < p.nxSteps; i++)
+    for(int i=0; i <= p.nxSteps; i++)
     {
-        r0[i] = 0.5*(p.c/p.dx)*(u0[i+1] - u0[i-1]);
+        //r0[i] = 0.5*(p.c/p.dx)*(u0[i+1] - u0[i-1]);
+        r0[i] = -(x[i] - gp.x_0)*u0[i]/(gp.a*gp.a);
     }
     
     //boundary terms
-    r0[p.nxSteps] = 0.5*(p.c/p.dx)*(u0[0] - u0[p.nxSteps-1]);
-    r0[0] = 0.5*(p.c/p.dx)*(u0[1] - u0[p.nxSteps]);
+    //r0[p.nxSteps] = 0.5*(p.c/p.dx)*(u0[0] - u0[p.nxSteps-1]);
+    //r0[0] = 0.5*(p.c/p.dx)*(u0[1] - u0[p.nxSteps]);
 
     s0 = vd(p.nxSteps+1,0);
 }
@@ -686,6 +687,8 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
         diff_c_m[i] = std::abs(u0_c[i] - u0_m[2*i]);
         diff_m_f[i] = std::abs(u0_m[2*i] - u0_f[4*i]);
     }
+
+    writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
 
     for(int t=1; t<= p_f.ntSteps; t++)
     {
