@@ -21,6 +21,8 @@ struct Pars
     double c;
     double dx;
     double dt;
+    int tSkip;
+    int xSkip;
     double alpha; //Courant factor
     double xMax;
     double xMin;
@@ -31,10 +33,6 @@ struct Pars
     int n_icn;
     std::string alg;
 };
-
-//double c, dx, dt, alpha, xMax, xMin, tMax, a, A, x_0, pause;
-//int nxSteps, ntSteps, n_icn;
-//std::string alg;
 
 void readPars(GaussPars&, Pars&, char*);
 void init_leapfrog(GaussPars&, Pars&, vd&, vd&, vd&, vd&);
@@ -118,6 +116,8 @@ void readPars(GaussPars &gp, Pars &p, char* parf)
         if(line.substr(0,3) == "c =") {p.c = std::stod(line.substr(4));}
         if(line.substr(0,4) == "dt =") {p.dt = std::stod(line.substr(5));}
         if(line.substr(0,4) == "dx =") {p.dx = std::stod(line.substr(5));}
+        if(line.substr(0,7) == "tSkip =") {p.tSkip = std::stoi(line.substr(8));}
+        if(line.substr(0,7) == "xSkip =") {p.xSkip = std::stoi(line.substr(8));}
         if(line.substr(0,6) == "xMax =") {p.xMax = std::stod(line.substr(7));}
         if(line.substr(0,6) == "xMin =") {p.xMin = std::stod(line.substr(7));}
         if(line.substr(0,6) == "tMax =") {p.tMax = std::stod(line.substr(7));}
@@ -146,6 +146,8 @@ void printPars(GaussPars &gp, Pars &p)
 	std::cout << "c       = " << p.c << "\n";
 	std::cout << "dt      = " << p.dt << "\n";
 	std::cout << "dx      = " << p.dx << "\n";
+    std::cout << "tSkip   = " << p.tSkip << "\n";
+    std::cout << "xSkip   = " << p.xSkip << "\n";
 	std::cout << "alpha   = " << p.alpha << "\n";
 	std::cout << "xMin    = " << p.xMin << "\n";
 	std::cout << "xMax    = " << p.xMax << "\n";
@@ -195,14 +197,9 @@ void init_icn(GaussPars &gp, Pars &p, vd &u0, vd &r0, vd &s0, vd &x)
 
     for(int i=0; i <= p.nxSteps; i++)
     {
-        //r0[i] = 0.5*(p.c/p.dx)*(u0[i+1] - u0[i-1]);
         r0[i] = -(x[i] - gp.x_0)*u0[i]/(gp.a*gp.a);
     }
     
-    //boundary terms
-    //r0[p.nxSteps] = 0.5*(p.c/p.dx)*(u0[0] - u0[p.nxSteps-1]);
-    //r0[0] = 0.5*(p.c/p.dx)*(u0[1] - u0[p.nxSteps]);
-
     s0 = vd(p.nxSteps+1,0);
 }
 
@@ -359,9 +356,9 @@ void writeData(Pars &p, vd &x, vd &u0, double time, std::string filename)
 	dataf << std::scientific << std::setprecision(14);
 	dataf << "#time = " << time << "\n";
 
-	for(int i = 0; i <= p.nxSteps; i++)
+	for(int i = 0; i <= p.nxSteps/p.xSkip; i++)
 	{
-		dataf << x[i] << "\t" << u0[i] << "\n";
+		dataf << x[p.xSkip*i] << "\t" << u0[p.xSkip*i] << "\n";
 	}
 
 	dataf << "\n";
@@ -383,9 +380,10 @@ void writeData(Pars &p, vd &x, vd &u0, vd &u1, double time,
     dataf << std::scientific << std::setprecision(14);
     dataf << "#time = " << time << "\n";
 
-    for(int i = 0; i <= p.nxSteps; i++)
+    for(int i = 0; i <= p.nxSteps/p.xSkip; i++)
     {
-        dataf << x[i] << "\t" << u0[i] << "\t" << u1[i] << "\n";
+        dataf << x[p.xSkip*i] << "\t" << u0[p.xSkip*i] << "\t" 
+        << u1[p.xSkip*i] << "\n";
     }
 
     dataf << "\n";
@@ -452,13 +450,20 @@ void leapfrogMainLoop(GaussPars &gp, Pars &p)
     writeData(p, x, u0, time, "data.dat");
     firstStep_leapfrog(p, u0, u1, r0, r1, s0, s1);
     time += p.dt;
-    writeData(p, x, u0, time, "data.dat");
+    
+    if(p.tSkip == 1)
+    {
+        writeData(p, x, u0, time, "data.dat");
+    }
 
     for(int t=2; t <= p.ntSteps; t++)
     {
         oneStep_leapfrog(p, u0, u1, r0, r1, s0, s1);
         time += p.dt;
-        writeData(p, x, u0, time, "data.dat");
+        if(t % p.tSkip == 0)
+        {
+            writeData(p, x, u0, time, "data.dat");
+        }
     }
 
     writeAnimationScript(gp, p, "data.dat", "animation.gpi");
@@ -493,7 +498,10 @@ void icnMainLoop(GaussPars &gp, Pars &p)
     {
     	oneStep_icn(p, u0, u1, r0, r01, r1, s0, s01, s1);
         time += p.dt;
-        writeData(p, x, u0, time, "data.dat");
+        if(t % p.tSkip == 0)
+        {
+            writeData(p, x, u0, time, "data.dat");
+        }
     }   
 
     writeAnimationScript(gp, p, "data.dat", "animation.gpi");
@@ -598,8 +606,12 @@ void leapfrogMainLoop_conv_test(GaussPars &gp, Pars &p_c)
                 diff_c_m[i] = std::abs(u0_c[i] - u0_m[2*i]);
                 diff_m_f[i] = std::abs(u0_m[2*i] - u0_f[4*i]);
             }
-
-            writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
+            
+            if(t % (4*p_c.tSkip) == 0)
+            {
+                writeData(p_c, x_c, diff_c_m, diff_m_f, time, 
+                    "conv_test_data.dat");
+            }
         }
     }
     writeAnimationScript(gp, p_c, "conv_test_data.dat", 
@@ -709,7 +721,11 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
                 diff_m_f[i] = std::abs(u0_m[2*i] - u0_f[4*i]);
             }
 
-            writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
+            if(t % (4*p_c.tSkip) == 0)
+            {
+                writeData(p_c, x_c, diff_c_m, diff_m_f, time, 
+                    "conv_test_data.dat");
+            }
         }
         time += p_f.dt;
     }
