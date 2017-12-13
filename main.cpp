@@ -195,10 +195,11 @@ void init_icn(GaussPars &gp, Pars &p, vd &u0, vd &r0, vd &s0, vd &x)
         u0[i] = gp.A*std::exp(-(x[i] - gp.x_0)*(x[i] - gp.x_0)/(2*gp.a*gp.a));
     }
 
-    for(int i=0; i <= p.nxSteps; i++)
+    for(int i=0; i < p.nxSteps; i++)
     {
         r0[i] = -(x[i] - gp.x_0)*u0[i]/(gp.a*gp.a);
     }
+    r0[p.nxSteps] = r0[0];
     
     s0 = vd(p.nxSteps+1,0);
 }
@@ -273,16 +274,16 @@ void oneIter_icn(Pars &p, vd &r0, vd &r01, vd &r1, vd &s0, vd &s01, vd &s1)
         r1[i] = r0[i] + 0.5*p.alpha*( s01[i+1] - s01[i-1] );
     }
     //boundary terms
-    r1[p.nxSteps] = r0[p.nxSteps] + 0.5*p.alpha*( s01[0] - s01[p.nxSteps-1] );
-    r1[0] = r0[0] + 0.5*p.alpha*( s01[1] - s01[p.nxSteps] );
+    r1[0] = r0[0] + 0.5*p.alpha*( s01[1] - s01[p.nxSteps-1] );
+    r1[p.nxSteps] = r1[0];
 
     for(int i=1; i < p.nxSteps; i++)
     {
         s1[i] = s0[i] + 0.5*p.alpha*( r01[i+1] - r01[i-1] );
     }
     //boundary terms    
-    s1[p.nxSteps] = s0[p.nxSteps] + 0.5*p.alpha*( r01[0] - r01[p.nxSteps-1] );
-    s1[0] = s0[0] + 0.5*p.alpha*( r01[1] - r01[p.nxSteps] );
+    s1[0] = s0[0] + 0.5*p.alpha*( r01[1] - r01[p.nxSteps-1] );
+    s1[p.nxSteps] = s1[0];
 }
 
 /*==========================================================================*/
