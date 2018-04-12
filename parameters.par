@@ -1,24 +1,28 @@
 //c is the wavespeed (default = 1.0)
 c = 1
 
+//m is the mass in the Klein-Gordon Equation (m=0 for the usual massless wave equation)
+//Only implemented in ICN (not Leapfrog)
+m = 0.5
+
 //dt is the temporal stepsize 
-dt = 0.0078125
+dt = 0.03125
 
 //dx is the spatial stepsize
 //Choose such that the Courant factor c*dt/dx <= 1
-dx = 0.015625
+dx = 0.0625
 
 //tSkip and xSkip controls how many t and x steps to skip when outputting
 //(default = 1)
 tSkip = 4
-xSkip = 4
+xSkip = 1
 
 //the domain is x in [xMin,xMax]
 xMax = 10
 xMin = -10
 
 //tMax is the value of time to solve up to
-tMax = 50.0
+tMax = 100.0
 
 //these are parameters for the initial Gaussian of the form
 //u(x,0) = A*exp(-(x-x_0)^2/(2*a^2))
@@ -31,7 +35,7 @@ A = 1.0
 //alg = icn conv test (convergence test for above) or
 //alg = leapfrog (staggered leapfrog) or
 //alg = leapfrog conv test (convergence test for above)
-alg = icn
+alg = icn conv test
 
 //n_icn is the number of ICN iterations to do (default = 2)
 n_icn = 2

@@ -19,6 +19,7 @@ struct GaussPars
 struct Pars
 {
     double c;
+    double m;
     double dx;
     double dt;
     int tSkip;
@@ -39,10 +40,10 @@ void init_leapfrog(GaussPars&, Pars&, vd&, vd&, vd&, vd&);
 void init_icn(GaussPars&, Pars&, vd&, vd&, vd&, vd&);
 void firstStep_leapfrog(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
 void oneStep_leapfrog(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
-void oneIter_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
-void averageIter_icn(Pars&, vd&, vd&, vd&, vd&);
-void calc_u_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
-void oneStep_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&);
+void oneIter_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&);
+void averageIter_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
+//void calc_u_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
+void oneStep_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&);
 void writeData(Pars&, vd&, vd&, double, std::string);
 void writeAnimationScript(GaussPars&, Pars&, std::string, std::string);
 void leapfrogMainLoop(GaussPars&, Pars&);
@@ -114,6 +115,7 @@ void readPars(GaussPars &gp, Pars &p, char* parf)
     {
         std::getline(parstream, line);
         if(line.substr(0,3) == "c =") {p.c = std::stod(line.substr(4));}
+        if(line.substr(0,3) == "m =") {p.m = std::stod(line.substr(4));}
         if(line.substr(0,4) == "dt =") {p.dt = std::stod(line.substr(5));}
         if(line.substr(0,4) == "dx =") {p.dx = std::stod(line.substr(5));}
         if(line.substr(0,7) == "tSkip =") {p.tSkip = std::stoi(line.substr(8));}
@@ -144,6 +146,7 @@ void printPars(GaussPars &gp, Pars &p)
 
 	std::cout << "Algorithm Parameters:\n";
 	std::cout << "c       = " << p.c << "\n";
+	std::cout << "m       = " << p.m << "\n";
 	std::cout << "dt      = " << p.dt << "\n";
 	std::cout << "dx      = " << p.dx << "\n";
     std::cout << "tSkip   = " << p.tSkip << "\n";
@@ -206,7 +209,8 @@ void init_icn(GaussPars &gp, Pars &p, vd &u0, vd &r0, vd &s0, vd &x)
 
 /*==========================================================================*/
 
-void firstStep_leapfrog(Pars &p, vd &u0, vd &u1, vd &r0, vd &r1, vd &s0, vd &s1)
+void firstStep_leapfrog(Pars &p, vd &u0, vd &u1, vd &r0, vd &r1, vd &s0, 
+	vd &s1)
 {
     //the 0.5 is because this first step is non-centred
     for(int i=1; i <= p.nxSteps; i++)
@@ -267,7 +271,8 @@ void oneStep_leapfrog(Pars &p, vd &u0, vd &u1, vd &r0, vd &r1, vd &s0, vd &s1)
 
 /*==========================================================================*/
 
-void oneIter_icn(Pars &p, vd &r0, vd &r01, vd &r1, vd &s0, vd &s01, vd &s1)
+void oneIter_icn(Pars &p, vd &u0, vd &u01, vd &u1, vd &r0, vd &r01, vd &r1, 
+	vd &s0, vd &s01, vd &s1)
 {
     for(int i=1; i < p.nxSteps; i++)
     {
@@ -279,67 +284,79 @@ void oneIter_icn(Pars &p, vd &r0, vd &r01, vd &r1, vd &s0, vd &s01, vd &s1)
 
     for(int i=1; i < p.nxSteps; i++)
     {
-        s1[i] = s0[i] + 0.5*p.alpha*( r01[i+1] - r01[i-1] );
+        s1[i] = s0[i] + 0.5*p.alpha*( r01[i+1] - r01[i-1] ) - 
+        p.c*p.c*p.c*p.c*p.m*p.m*p.dt*u01[i];
     }
     //boundary terms    
-    s1[0] = s0[0] + 0.5*p.alpha*( r01[1] - r01[p.nxSteps-1] );
+    s1[0] = s0[0] + 0.5*p.alpha*( r01[1] - r01[p.nxSteps-1] ) - 
+    p.c*p.c*p.c*p.c*p.m*p.m*p.dt*u01[0];
     s1[p.nxSteps] = s1[0];
+
+    for(int i=0; i <= p.nxSteps; i++)
+    {
+    	u1[i] = u0[i] + p.dt*s01[i];
+    }
 }
 
 /*==========================================================================*/
 
-void averageIter_icn(Pars &p, vd &r0, vd &r1, vd &s0, vd &s1)
+void averageIter_icn(Pars &p, vd &u0, vd &u1, vd &r0, vd &r1, vd &s0, vd &s1)
 {
     for(int i = 0; i <= p.nxSteps; i++)
     {
-        r1[i] = 0.5*( r0[i] + r1[i] );
+        u1[i] = 0.5*( u0[i] + u1[i] );
+       	r1[i] = 0.5*( r0[i] + r1[i] );
         s1[i] = 0.5*( s0[i] + s1[i] );
     }
 }
 
 /*==========================================================================*/
 
-void calc_u_icn(Pars &p, vd &u0, vd &u1, vd &s0, vd &s1, vd &r0, vd &r1)
-{
-    for(int i=0; i<= p.nxSteps; i++)
-    {
-        u1[i] = u0[i] + 0.5*p.dt*( s0[i] + s1[i] );
-    }
+// void calc_u_icn(Pars &p, vd &u0, vd &u1, vd &s0, vd &s1, vd &r0, vd &r1)
+// {
+//     for(int i=0; i<= p.nxSteps; i++)
+//     {
+//         u1[i] = u0[i] + 0.5*p.dt*( s0[i] + s1[i] );
+//     }
     
-    //swap vectors 
-    //the 0 quantities are what we want i.e. values at current time
-    u0.swap(u1);
-    s0.swap(s1);
-    r0.swap(r1);
-}
+//     //swap vectors 
+//     //the 0 quantities are what we want i.e. values at current time
+//     u0.swap(u1);
+//     s0.swap(s1);
+//     r0.swap(r1);
+// }
 
 /*==========================================================================*/
 
-void oneStep_icn(Pars &p, vd &u0, vd &u1, vd &r0, vd &r01, vd &r1, vd &s0, 
-	 vd &s01, vd &s1)
+void oneStep_icn(Pars &p, vd &u0, vd &u01, vd &u1, vd &r0, vd &r01, vd &r1, 
+	vd &s0, vd &s01, vd &s1)
 {
     for(int i_icn=0; i_icn <= p.n_icn; i_icn++)
     {
         if(i_icn == 0)
         {
-            oneIter_icn(p, r0, r0, r01, s0, s0, s01);
+            oneIter_icn(p, u0, u0, u01, r0, r0, r01, s0, s0, s01);
         }
         else if(i_icn != p.n_icn)
         {
-            averageIter_icn(p, r0, r01, s0, s01);
-            oneIter_icn(p, r0, r01, r1, s0, s01, s1);
+            averageIter_icn(p, u0, u01, r0, r01, s0, s01);
+            oneIter_icn(p, u0, u01, u1, r0, r01, r1, s0, s01, s1);
             
             //swap vectors as this is not the final iteration
+            u1.swap(u01);
             r1.swap(r01);
             s1.swap(s01);
         }
         else
         {
-            averageIter_icn(p, r0, r01, s0, s01);
-            oneIter_icn(p, r0, r01, r1, s0, s01, s1);
+            averageIter_icn(p, u0, u01, r0, r01, s0, s01);
+            oneIter_icn(p, u0, u01, u1, r0, r01, r1, s0, s01, s1);
         }
     }
-    calc_u_icn(p, u0, u1, s0, s1, r0, r1);
+    //calc_u_icn(p, u0, u1, s0, s1, r0, r1);
+    u0.swap(u1);
+    s0.swap(s1);
+    r0.swap(r1);
 }
 
 /*==========================================================================*/
@@ -411,7 +428,9 @@ void writeAnimationScript(GaussPars &gp, Pars &p, std::string datafname,
     {
         animf << "set yrange[" << -0.5*gp.A << ":" << gp.A+0.1 << "]\n";
 	}
-    animf << "do for [i=0:" << p.ntSteps << "] {\n\ttime = " << p.dt << "*i\n";
+    animf << "do for [i=0:" << p.ntSteps/p.tSkip << "] {\n\ttime = " 
+    	<< p.dt*p.tSkip << "*i\n";
+    	
 	if(p.alg.find("conv test") == std::string::npos)
     {
         animf << "\ttitlevar = sprintf(\"time = %f\", time)\n";
@@ -483,6 +502,7 @@ void icnMainLoop(GaussPars &gp, Pars &p)
     //ICN algorithm
     vd x(p.nxSteps+1,0);
     vd u0(p.nxSteps+1,0);
+    vd u01(p.nxSteps+1,0);
     vd u1(p.nxSteps+1,0);
     vd r0(p.nxSteps+1,0);
     vd r01(p.nxSteps+1,0);
@@ -497,7 +517,7 @@ void icnMainLoop(GaussPars &gp, Pars &p)
 
     for(int t=1; t <= p.ntSteps; t++)
     {
-    	oneStep_icn(p, u0, u1, r0, r01, r1, s0, s01, s1);
+    	oneStep_icn(p, u0, u01, u1, r0, r01, r1, s0, s01, s1);
         time += p.dt;
         if(t % p.tSkip == 0)
         {
@@ -657,6 +677,7 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
     //ICN algorithm
     vd x_c(p_c.nxSteps+1,0);
     vd u0_c(p_c.nxSteps+1,0);
+    vd u01_c(p_c.nxSteps+1,0);
     vd u1_c(p_c.nxSteps+1,0);
     vd r0_c(p_c.nxSteps+1,0);
     vd r01_c(p_c.nxSteps+1,0);
@@ -667,6 +688,7 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
 
     vd x_m(p_m.nxSteps+1,0);
     vd u0_m(p_m.nxSteps+1,0);
+    vd u01_m(p_m.nxSteps+1,0);
     vd u1_m(p_m.nxSteps+1,0);
     vd r0_m(p_m.nxSteps+1,0);
     vd r01_m(p_m.nxSteps+1,0);
@@ -677,6 +699,7 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
 
     vd x_f(p_f.nxSteps+1,0);
     vd u0_f(p_f.nxSteps+1,0);
+    vd u01_f(p_f.nxSteps+1,0);
     vd u1_f(p_f.nxSteps+1,0);
     vd r0_f(p_f.nxSteps+1,0);
     vd r01_f(p_f.nxSteps+1,0);
@@ -705,16 +728,18 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
 
     for(int t=1; t<= p_f.ntSteps; t++)
     {
-        oneStep_icn(p_f, u0_f, u1_f, r0_f, r01_f, r1_f, s0_f, s01_f, s1_f);
+        oneStep_icn(p_f, u0_f, u01_f, u1_f, r0_f, r01_f, r1_f, s0_f, s01_f, 
+        	s1_f);
         
         if(t % 2 == 0)
         {
-            oneStep_icn(p_m, u0_m, u1_m, r0_m, r01_m, r1_m, s0_m, s01_m, s1_m);
+            oneStep_icn(p_m, u0_m, u01_m, u1_m, r0_m, r01_m, r1_m, s0_m, 
+            	s01_m, s1_m);
         }    
         
         if(t % 4 == 0)
         {
-            oneStep_icn(p_c, u0_c, u1_c, r0_c, r01_c, r1_c, s0_c, s01_c, s1_c);
+            oneStep_icn(p_c, u0_c, u01_c, u1_c, r0_c, r01_c, r1_c, s0_c, s01_c, s1_c);
 
             for(int i=0; i <= p_c.nxSteps; i++)
             {
