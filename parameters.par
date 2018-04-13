@@ -3,19 +3,19 @@ c = 1
 
 //m is the mass in the Klein-Gordon Equation (m=0 for the usual massless wave equation)
 //Only implemented in ICN (not Leapfrog)
-m = 0.5
+m = 0.1
 
 //dt is the temporal stepsize 
-dt = 0.03125
+dt = 0.015625
 
 //dx is the spatial stepsize
 //Choose such that the Courant factor c*dt/dx <= 1
-dx = 0.0625
+dx = 0.03125
 
 //tSkip and xSkip controls how many t and x steps to skip when outputting
 //(default = 1)
-tSkip = 4
-xSkip = 1
+tSkip = 16
+xSkip = 4
 
 //the domain is x in [xMin,xMax]
 xMax = 10
@@ -41,4 +41,4 @@ alg = icn conv test
 n_icn = 2
 
 //pause is the time between successive plots in the gnuplot animation
-pause = 0
+pause = 0.05

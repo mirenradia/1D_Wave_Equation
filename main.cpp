@@ -45,6 +45,9 @@ void averageIter_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
 //void calc_u_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&);
 void oneStep_icn(Pars&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&, vd&);
 void writeData(Pars&, vd&, vd&, double, std::string);
+void writeData(Pars&, vd&, vd&, vd&, double, std::string);
+double L2norm(Pars&, vd&);
+void writeConvergenceData(Pars&, vd&, vd&, double, std::string);
 void writeAnimationScript(GaussPars&, Pars&, std::string, std::string);
 void leapfrogMainLoop(GaussPars&, Pars&);
 void icnMainLoop(GaussPars&, Pars&);
@@ -391,8 +394,8 @@ void writeData(Pars &p, vd &x, vd &u0, vd &u1, double time,
 
     if(!dataf)
     {
-        std::cerr << "Uh oh, could not open" << filename << "for writing" << 
-        std::endl;
+        std::cerr << "Uh oh, could not open" << filename << "for writing" 
+            << std::endl;
         exit(1);
     }
     dataf << std::scientific << std::setprecision(14);
@@ -409,6 +412,42 @@ void writeData(Pars &p, vd &x, vd &u0, vd &u1, double time,
 
 /*==========================================================================*/
 
+double L2norm(Pars &p, vd &u)
+{
+    double sumofsquares = 0;
+    int length = u.size();
+    for(int i = 0; i < length; i++)
+    {
+        sumofsquares += u[i]*u[i];
+    }
+    return std::sqrt(p.dx*sumofsquares);
+}
+
+/*==========================================================================*/
+
+void writeConvergenceData(Pars &p, vd &vnum, vd &vdenom, double time, 
+    std::string filename)
+{
+    std::ofstream convf(filename, (time == 0) ? std::ios::out : 
+        std::ios::app);
+
+    if (!convf)
+    {
+        std::cerr << "Uh oh, could not open " << filename << " for writing"
+            << std::endl;
+        exit(1);
+    }
+
+    double L2norm_num = L2norm(p, vnum);
+    double L2norm_denom = L2norm(p, vdenom);
+    double convergenceRatio = (L2norm_denom == 0) ? 0 : L2norm_num/L2norm_denom;
+
+    convf << std::scientific << std::setprecision(14);
+    convf << time << "\t" << convergenceRatio << "\n";
+}
+
+/*==========================================================================*/
+
 void writeAnimationScript(GaussPars &gp, Pars &p, std::string datafname, 
     std::string animfname)
 {
@@ -416,7 +455,7 @@ void writeAnimationScript(GaussPars &gp, Pars &p, std::string datafname,
 
 	if(!animf)
 	{
-		std::cerr << "Uh oh, could not open animation.gpi for writing" 
+		std::cerr << "Uh oh, could not open " << animfname << " for writing" 
 				<< std::endl;
 		return;
 	}
@@ -725,6 +764,8 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
     }
 
     writeData(p_c, x_c, diff_c_m, diff_m_f, time, "conv_test_data.dat");
+    writeConvergenceData(p_c, diff_c_m, diff_m_f, time, 
+        "convergence_ratio.dat");
 
     for(int t=1; t<= p_f.ntSteps; t++)
     {
@@ -751,6 +792,8 @@ void icnMainLoop_conv_test(GaussPars &gp, Pars &p_c)
             {
                 writeData(p_c, x_c, diff_c_m, diff_m_f, time, 
                     "conv_test_data.dat");
+                writeConvergenceData(p_c, diff_c_m, diff_m_f, time, 
+                    "convergence_ratio.dat");
             }
         }
         time += p_f.dt;
